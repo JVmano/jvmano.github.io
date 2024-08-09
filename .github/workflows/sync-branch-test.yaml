@@ -1,0 +1,33 @@
+name: Sync developing branches
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  sync-branches:
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.title, 'hotfix')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync uat branch from main
+        run: |
+          git checkout uat
+          git merge origin/main
+          git push origin uat
+
+      - name: Sync develop branch from uat
+        run: |
+          git checkout develop
+          git merge origin/uat
+          git push origin develop
