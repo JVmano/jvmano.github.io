@@ -3,7 +3,7 @@ name: Sync developing branches
 on:
   pull_request:
     types:
-      - closed
+      - closed #
     branches:
       - main
 
