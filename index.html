@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSO Form Flow Test</title>
-    <script>(function (u, n, i, v, e, r, s, a, l) { u[r] = {}; u[r].uid = '1f7c69dc-1758-4850-bac7-efa3a7475b32'; u[r].m = ['getReferrerInfo', 'identify', 'integrationsReady', 'on', 'ready', 'track']; u[r].queue = []; u[r].f = function(t) { return function() { var l = Array.prototype.slice.call(arguments); l.unshift(t); u[r].queue.push(l); return u[r].queue; }; }; for (var t = 0; t < u[r].m.length; t++) { l = u[r].m[t]; u[r][l] = u[r].f(l); } a = n.createElement(v); a.src = e + '/us-' + u[r].uid + '.js'; a.async = s; n.getElementsByTagName(i)[0].appendChild(a); })(window, document, 'head', 'script', 'https://joao-snippet.zferral.com', 'mbsy', true);</script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -215,34 +214,69 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // Simulate API call to get company token
-        function getCompanyToken() {
-            return new Promise((resolve) => {
-                // Simulate API delay
-                setTimeout(() => {
-                    // Mock token response (in real implementation, this would be from your API)
-                    resolve('mock_company_token_' + Date.now());
-                }, 1500);
-            });
+        // Make actual API call to get company token
+        async function getCompanyToken() {
+            const url = `https://api.getambassador.com/api/v2/${SSO_CONFIG.username}/${SSO_CONFIG.api_key}/json/company/token`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    mode: 'cors' // Handle CORS
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log(data.response.data)
+                
+                if (data.response && data.response.data && data.response.data.token) {
+                    return data.response.data.token;
+                } else {
+                    throw new Error('Invalid API response format');
+                }
+            } catch (error) {
+                console.error('Error fetching company token:', error);
+                throw error;
+            }
         }
 
         // Generate SSO login URL
         async function generateSSOUrl(email) {
             try {
-                // Get company token
+                // Show loading message
+                updateLoadingMessage('Fetching company token...');
+                
+                // Get company token from Ambassador API
                 const token = await getCompanyToken();
+                
+                updateLoadingMessage('Generating SSO signature...');
                 
                 // Generate signature
                 const signature = await sha1(SSO_CONFIG.api_key + email);
                 
+                updateLoadingMessage('Creating SSO login URL...');
+                
                 // Build SSO URL
                 const ssoUrl = `https://${SSO_CONFIG.portal_domain}/sso/login/?token=${token}&email=${encodeURIComponent(email)}&signature=${signature}`;
-                console.log(ssoUrl)
                 
                 return ssoUrl;
             } catch (error) {
                 console.error('Error generating SSO URL:', error);
+                updateLoadingMessage('Error: Failed to generate SSO URL. Please check console for details.');
                 return null;
+            }
+        }
+
+        // Helper function to update loading message
+        function updateLoadingMessage(message) {
+            const loadingElement = document.querySelector('.loading p');
+            if (loadingElement) {
+                loadingElement.textContent = message;
             }
         }
 
@@ -264,28 +298,49 @@
             
             // Simulate account creation delay
             setTimeout(async () => {
-                // Display user data in success step
-                document.getElementById('displayName').textContent = userData.name;
-                document.getElementById('displayEmail').textContent = userData.email;
-                document.getElementById('displayCompany').textContent = userData.company;
-                
-                // Generate SSO URL for the user
-                const ssoUrl = await generateSSOUrl(userData.email);
-                
-                // Set up SSO login button
-                const ssoBtn = document.getElementById('ssoLoginBtn');
-                if (ssoUrl) {
-                    ssoBtn.onclick = () => {
-                        window.open(ssoUrl, '_blank');
-                    };
-                } else {
-                    ssoBtn.textContent = 'SSO Login Unavailable';
-                    ssoBtn.disabled = true;
+                try {
+                    // Display user data in success step
+                    document.getElementById('displayName').textContent = userData.name;
+                    document.getElementById('displayEmail').textContent = userData.email;
+                    document.getElementById('displayCompany').textContent = userData.company;
+                    
+                    // Generate SSO URL for the user
+                    const ssoUrl = await generateSSOUrl(userData.email);
+                    
+                    // Set up SSO login button
+                    const ssoBtn = document.getElementById('ssoLoginBtn');
+                    if (ssoUrl) {
+                        ssoBtn.onclick = () => {
+                            window.open(ssoUrl, '_blank');
+                        };
+                        ssoBtn.disabled = false;
+                        ssoBtn.textContent = '🔐 Login via SSO Portal';
+                    } else {
+                        ssoBtn.textContent = '❌ SSO Login Failed - Check Console';
+                        ssoBtn.disabled = true;
+                        ssoBtn.style.background = '#e53e3e';
+                    }
+                    
+                    // Show success step
+                    showStep('step3');
+                } catch (error) {
+                    console.error('Error during account creation process:', error);
+                    updateLoadingMessage('Error: Account creation failed. Please try again.');
+                    
+                    // Add retry button
+                    setTimeout(() => {
+                        const loadingDiv = document.querySelector('.loading');
+                        const retryBtn = document.createElement('button');
+                        retryBtn.textContent = 'Try Again';
+                        retryBtn.className = 'btn';
+                        retryBtn.style.marginTop = '20px';
+                        retryBtn.onclick = () => {
+                            showStep('step1');
+                        };
+                        loadingDiv.appendChild(retryBtn);
+                    }, 1000);
                 }
-                
-                // Show success step
-                showStep('step3');
-            }, 2000);
+            }, 1000);
         });
 
         // Reset button handler
@@ -318,4 +373,4 @@
         });
     </script>
 </body>
-</html
+</html>
