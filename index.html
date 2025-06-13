@@ -237,6 +237,7 @@
                 
                 // Build SSO URL
                 const ssoUrl = `https://${SSO_CONFIG.portal_domain}/sso/login/?token=${token}&email=${encodeURIComponent(email)}&signature=${signature}`;
+                console.log(ssoUrl)
                 
                 return ssoUrl;
             } catch (error) {
