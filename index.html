@@ -139,6 +139,16 @@
 </head>
 <body>
     <div class="container">
+        <!-- Navigation -->
+        <div id="navigation" style="text-align: center; margin-bottom: 30px;">
+            <button id="newUserBtn" class="btn" style="width: auto; margin: 0 10px; background: #667eea;">
+                New User Flow
+            </button>
+            <button id="existingUserBtn" class="btn" style="width: auto; margin: 0 10px; background: #48bb78;">
+                Existing User Login
+            </button>
+        </div>
+
         <!-- Step 1: User Creation Form -->
         <div id="step1" class="step active">
             <h1>Create Your Account</h1>
@@ -195,6 +205,43 @@
                 </button>
             </div>
         </div>
+
+        <!-- Existing User Login Page -->
+        <div id="existingUserLogin" class="step">
+            <h1>Welcome Back!</h1>
+            
+            <div class="user-info" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; border: none;">
+                <h3>🎉 You are successfully logged in!</h3>
+                <div style="margin-top: 20px;">
+                    <p><strong>User:</strong> John Doe</p>
+                    <p><strong>Email:</strong> john.doe@company.com</p>
+                    <p><strong>Company:</strong> Acme Corporation</p>
+                    <p><strong>Role:</strong> Marketing Manager</p>
+                    <p><strong>Last Login:</strong> <span id="lastLoginTime"></span></p>
+                </div>
+            </div>
+
+            <button id="prosperSSOBtn" class="btn sso-btn" style="background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%); font-size: 18px; padding: 16px;">
+                🔐 Access Your Ambassador Portal
+            </button>
+
+            <!-- Loading state for SSO generation -->
+            <div id="ssoLoading" class="loading" style="margin-top: 20px;">
+                <div class="spinner"></div>
+                <p>Generating secure SSO token...</p>
+            </div>
+
+            <!-- Additional options -->
+            <div style="margin-top: 30px; text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <p style="color: #666; margin-bottom: 15px;">Need help accessing your account?</p>
+                <button class="btn" style="background: #e2e8f0; color: #4a5568; width: auto; padding: 10px 20px; margin: 0 5px;">
+                    Contact Support
+                </button>
+                <button id="logoutBtn" class="btn" style="background: #e53e3e; width: auto; padding: 10px 20px; margin: 0 5px;">
+                    Logout
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -232,7 +279,6 @@
                 }
                 
                 const data = await response.json();
-                console.log(data.response.data)
                 
                 if (data.response && data.response.data && data.response.data.token) {
                     return data.response.data.token;
@@ -343,16 +389,99 @@
             }, 1000);
         });
 
-        // Reset button handler
-        document.getElementById('resetBtn').addEventListener('click', function() {
-            // Reset form
+        // Navigation handlers
+        document.getElementById('newUserBtn').addEventListener('click', function() {
+            showNewUserFlow();
+        });
+
+        document.getElementById('existingUserBtn').addEventListener('click', function() {
+            showExistingUserFlow();
+        });
+
+        // Show new user flow
+        function showNewUserFlow() {
+            // Hide navigation and existing user page
+            document.getElementById('navigation').style.display = 'block';
+            document.getElementById('existingUserLogin').classList.remove('active');
+            
+            // Reset and show step 1
             document.getElementById('userForm').reset();
             showStep('step1');
+        }
+
+        // Show existing user flow
+        function showExistingUserFlow() {
+            // Update last login time
+            document.getElementById('lastLoginTime').textContent = new Date().toLocaleString();
+            
+            // Hide all other steps and show existing user login
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.getElementById('existingUserLogin').classList.add('active');
+        }
+
+        // Existing user SSO login handler
+        document.getElementById('prosperSSOBtn').addEventListener('click', async function() {
+            const btn = this;
+            const loading = document.getElementById('ssoLoading');
+            const userEmail = 'john.doe@company.com'; // Simulated logged-in user email
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.textContent = 'Generating SSO Link...';
+            loading.style.display = 'block';
+            
+            try {
+                // Generate SSO URL for existing user
+                const ssoUrl = await generateSSOUrl(userEmail);
+                
+                if (ssoUrl) {
+                    // Hide loading
+                    loading.style.display = 'none';
+                    
+                    // Update button and redirect
+                    btn.textContent = '🚀 Redirecting to Prosper...';
+                    
+                    setTimeout(() => {
+                        window.open(ssoUrl, '_blank');
+                        
+                        // Reset button after redirect
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.textContent = '🔐 Login via Prosper';
+                        }, 2000);
+                    }, 1000);
+                } else {
+                    throw new Error('Failed to generate SSO URL');
+                }
+            } catch (error) {
+                console.error('SSO Error:', error);
+                loading.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = '❌ SSO Failed - Try Again';
+                btn.style.background = '#e53e3e';
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    btn.textContent = '🔐 Login via Prosper';
+                    btn.style.background = 'linear-gradient(135deg, #9f7aea 0%, #805ad5 100%)';
+                }, 3000);
+            }
+        });
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to logout?')) {
+                // Simulate logout by going back to new user flow
+                showNewUserFlow();
+                alert('You have been successfully logged out.');
+            }
         });
 
         // Helper function to show specific step
         function showStep(stepId) {
-            // Hide all steps
+            // Hide all steps including existing user login
             document.querySelectorAll('.step').forEach(step => {
                 step.classList.remove('active');
             });
@@ -360,6 +489,13 @@
             // Show target step
             document.getElementById(stepId).classList.add('active');
         }
+
+        // Reset button handler
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            // Reset form
+            document.getElementById('userForm').reset();
+            showStep('step1');
+        });
 
         // Add some visual feedback for form inputs
         document.querySelectorAll('input').forEach(input => {
